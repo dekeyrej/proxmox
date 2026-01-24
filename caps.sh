@@ -1,0 +1,12 @@
+NODE=iluvatar
+CTID=100
+ssh $NODE pct set $CTID --mp0: /dev/nvidia0,mp=/dev/nvidia0
+ssh $NODE pct set $CTID --mp0: /dev/nvidiactl,mp=/dev/nvidiactl
+ssh $NODE pct set $CTID --mp0: /dev/nvidia-uvm,mp=/dev/nvidia-uvm
+ssh $NODE pct set $CTID --mp0: /dev/nvidia-uvm-tools,mp=/dev/nvidia-uvm-tools
+#ssh $NODE pct set $CTID --mp0: /dev/nvidia-caps,mp=/dev/nvidia-caps
+ssh $NODE pct set $CTID --mp0: /dev/nvidia-caps/nvidia-cap1,mp=/dev/nvidia-caps/nvidia-cap1
+ssh $NODE pct set $CTID --mp0: /dev/nvidia-caps/nvidia-cap2,mp=/dev/nvidia-caps/nvidia-cap2
+# ssh $NODE pct set $CTID --features device=c 195:* rwm
+# ssh $NODE pct set $CTID --features device=c 507:* rwm
+# ssh $NODE pct set $CTID --features device=c 510:* rwm
