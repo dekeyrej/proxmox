@@ -6,8 +6,8 @@ gateway=192.168.86.1               # default gateway for VMs
 storage_pool=nvme_pool             # default storage pool for VM disks
 # less likely to need modification
 sshkeys=/root/.ssh/authorized_keys # or a text file with public keys, one per line, OPENSSH format _ON the NODE_!!!
-image_path=local:import            # PVESM path to cloud images on the node, e.g., local:import
-physical_path=/var/lib/vz/import   # physical path on the node where images are stored
+image_path=ssd_backup:import       # PVESM path to cloud images on the node, e.g., local:import
+physical_path=/mnt/ssd_backup/import   # physical path on the node where images are stored
 # required parameters to create VM
 vmid=""                            # VMID to create, must be unique
 hostname="vm-$vmid"                # hostname for the VM
@@ -127,12 +127,12 @@ EOF
 fi
 
 if [[ $node == "local" ]]; then
-    if ! test -f "/var/lib/vz/import/$image"; then
+    if ! test -f "$physical_path/$image"; then
         echo "Image $image not found on local node"
         list_images
     fi
 else
-    if ! ssh "$node" test -f "/var/lib/vz/import/$image"; then
+    if ! ssh "$node" test -f "$physical_path/$image"; then
         echo "Image '$image' not found on node $node"
         list_images
 
@@ -196,7 +196,7 @@ qm_options=(
   --memory "$memory"
   --balloon "$memory"
   --net0 "virtio,bridge=vmbr0"
-  --scsihw virtio-scsi-pci
+  --scsihw virtio-scsi-single
   --boot order=scsi0
   --scsi0 "$storage_pool:0,import-from=$image_path/$image"
   --ostype l26
