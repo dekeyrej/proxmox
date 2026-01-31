@@ -92,7 +92,7 @@ COMMON OPTIONS
     -n <node>            Proxmox node or 'local' (default: $node)
     -w <gateway>         Gateway IP address (default: $gateway)
     -s <storage>         Storage pool for disks (default: $storage_pool)
-    -k <sshkeys>         SSH public keys file on the node (default: $sshkeys)
+    -k <sshkeys>         SSH public keys file on the node (default: $sshkeys) (applied to Cloud-init user)
 
 ADVANCED OPTIONS
     -p <pool>            Assign VM to a resource pool
