@@ -58,7 +58,7 @@ Each node has:
 These interfaces are virtualized as:
 
 - `vmbr0` — primary bridge for general VM/CT networking  
-- `vbr100` — high‑speed 100GbE backend (MTU 9000)
+- `vmbr100` — high‑speed 100GbE backend (MTU 9000)
 
 | Endpoint              | 10/5/2.5/1GbE IPv4 | 100GbE IPv4 |
 |----------------------|---------------------|-------------|
