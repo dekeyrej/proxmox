@@ -14,6 +14,7 @@ image=""                           # cloud image filename (must exist in ${image
 # required parameters to run a VM with reasonable defaults
 hostname=""                        # hostname for the VM; default: vm-<vmid>
 user=""                            # cloud-init user; auto-detected if omitted
+passwd=""                          # cloud-init user password (not recommended; use SSH keys instead)
 cores=2                            # number of vCPUs
 memory=2048                        # minimum and balloon memory in MB, swap 0
 disk_size=10                       # scsi0 boot disk size, in GB
@@ -41,7 +42,7 @@ list_images() {
     exit 1
 }
 
-while getopts "Ln:w:s:k:I:v:h:i:u:c:m:d:a:p:t:e:r:g:T:D:P:NRH" opt; do
+while getopts "Ln:w:s:k:I:v:h:i:u:c:m:d:a:p:t:e:r:g:T:D:P:W:NRH" opt; do
   case $opt in 
     L) list_images ;;
     n) node="$OPTARG" ;;
@@ -87,6 +88,7 @@ COMMON OPTIONS
     -h <hostname>        Hostname for the VM (default: vm-<vmid>)
     -u <user>            Cloud-init user (auto-detected if omitted)
     -k <sshkeys>         SSH public keys file on the node (default: $sshkeys) (applied to Cloud-init user)
+    -W <password>        Cloud-init user password (not recommended; use SSH keys instead)
     -a <ip>              Static IP address ('dhcp' if omitted)
     -c <cores>           Number of vCPUs (default: $cores)
     -m <memory>          Memory in MB (default: $memory)
@@ -234,6 +236,7 @@ qm_options=(
 [[ -n $remarks ]] && qm_options+=(--description "$remarks")
 [[ -n $tags ]] && qm_options+=(--tags "$tags")
 [[ -n $display ]] && qm_options+=(--vga "$display")
+[[ -n $passwd ]] && qm_options+=(--cipassword "$passwd")
 
 # hostpci Requires q35 machine type, UEFI BIOS, and pcie=1 for stable GPU performance
 [[ -n $hostpci0 ]] && qm_options+=(--hostpci0 "$hostpci0" --machine "type=q35" --bios ovmf --efidisk0 "$storage_pool:1,efitype=4m,ms-cert=2023,pre-enrolled-keys=1") # (opinionated for hostpci0)

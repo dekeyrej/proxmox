@@ -193,6 +193,7 @@ pct_options=(
   --onboot 1
   --start 1
   --unprivileged 1
+  --features nesting=1
 )
 
 [[ -n $ipaddress ]] \
