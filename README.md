@@ -16,7 +16,7 @@
 - **Supporting GitHub repositories.**  
   Four repositories provide the tooling foundation for repeatable infrastructure:
 
-  - **[Terraform](https://github.com/dekeyrej/Terraform)** — Modules for provisioning VMs and LXC containers. The VM module supports Ubuntu (22.04, 24.04, 25.04), Debian (12, 13), RockyLinux (9, 10), CentOS (9, 10), and Amazon Linux (2, 2023).  
+  - **[Terraform](https://github.com/dekeyrej/Terraform)** — Modules for provisioning VMs and LXC containers. The VM module supports Ubuntu (22.04, 24.04, 25.10), Debian (12, 13, 14), RockyLinux (9, 10), CentOS (9, 10), and Amazon Linux (2, 2023).  
     Due to proxmox implementation details, the LXC module works best with *lightly customized* images (see below) derived from [linuxcontainers.org](https://images.linuxcontainers.org/).
 
   - **[custom-container-images](https://github.com/dekeyrej/custom-container-images)** — Source and build instructions for custom LXC images (Ubuntu, Debian, RockyLinux, CentOS, AmazonLinux 2023). These images enable `openssh-server`, create a default non‑root user, grant passwordless sudo, and prepopulate `authorized_keys`, making them immediately Ansible‑ready.
@@ -81,7 +81,7 @@ Each node provides a mix of NVMe and HDD storage, organized into several pools:
 - **`vmdata`** (7.85TB NVMe): Per‑node, non‑shared. High‑performance VM/CT storage.
 - **`cold`** (9.2TB RAID1 HDD): Per‑node, non‑shared. Backups, ISOs, CT templates, imported images.
 - **`pbs`** (3.94TB NVMe): Hosted by VM 7777 `bluep-pbs`, pinned to `bluep02`. Shared backup target.
-- **`linstor`** (7.6TB NVMe‑backed, 3‑replica DRBD): Shared, distributed, high‑performance storage.
+- **`linstor`** (7.6TB NVMe‑backed, 3‑replica DRBD): Shared, distributed (over 100GbE), high‑performance storage.
 
 ---
 
@@ -108,6 +108,18 @@ Current roles:
     Example: `build_vm.sh`
   - `pct` — create, modify, start, stop, and destroy LXC containers  
     Example: `build_container.sh` (based on `custom-container-images`)
+
+- **Customization**
+  - hardcoding - edit the headers of build_container.sh and build_vm.sh to adjust the defaults for your environment (deprecated)
+  - environmental overrides (new & preferred)
+    - PVENODE="iluvatar"                                     # remote node (build_vm.sh and build_container.sh)
+    - GATEWAY="192.168.86.1"                                 # network gateway address (build_vm.sh and build_container.sh)
+    - STORAGE_POOL="nvme_pool"                               # default storage pool (build_vm.sh and build_container.sh)
+    - SSHKEYS="/root/.ssh/authorized_keys"                   # text file with public keys, one per line, OPENSSH format _ON the NODE_!!! (build_vm.sh and build_container.sh)
+    - LOGICAL_IMPORT_PATH="ssd_backup:import"                # PVESM path to cloud images on the node, e.g., local:import (build_vm.sh)
+    - PHYSICAL_IMPORT_PATH="/mnt/ssd_backup/import"          # physical path on the node where images are stored (build_vm.sh)
+    - LOGICAL_IMAGE_PATH="ssd_backup:vztmpl"                 # PVESM path to lxc templates on the node, e.g., local:import (build_container.sh)
+    - PHYSICAL_IMAGE_PATH="/mnt/ssd_backup/template/cache"   # physical path on the node where lxc templates are stored (build_container.sh)
 
 ---
 

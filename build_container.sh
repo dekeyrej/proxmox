@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
-# default parameters               - can be over-ridden by command line args
+# default parameters               - can be over-ridden by command line args, or environment variables with uppercase names (e.g., PVENODE, GATEWAY, etc.)
 # definitely modify for environment
-node=iluvatar                      # pve node or 'local' if you are running it on the Proxmox node
-gateway=192.168.86.1               # default gateway for VMs
-storage_pool=nvme_pool             # default storage pool for VM disks
-# less likely to need modification
-sshkeys=/root/.ssh/authorized_keys # or a text file with public keys, one per line, OPENSSH format _ON the NODE_!!!
-image_path=ssd_backup:vztmpl       # PVESM path to cloud images on the node, e.g., local:import
-physical_path=/mnt/ssd_backup/template/cache # physical path on the node where images are stored
+node=${PVENODE:-"local"}                                               # pve node or 'local' if you are running it on the Proxmox node
+gateway=${GATEWAY:-"192.168.86.1"}                                     # default gateway for VMs
+storage_pool=${STORAGE_POOL:-"nvme_pool"}                              # default storage pool for VM disks
+sshkeys=${SSHKEYS:-"/root/.ssh/authorized_keys"}                       # or a text file with public keys, one per line, OPENSSH format _ON the NODE_!!!
+image_path=${LOGICAL_IMAGE_PATH:-"ssd_backup:vztmpl"}                  # PVESM path to cloud images on the node, e.g., local:import
+physical_path=${PHYSICAL_IMAGE_PATH:-"/mnt/ssd_backup/template/cache"} # physical path on the node where images are stored
 # required parameters to create VM
 vmid=""                            # VMID to create, must be unique
 hostname="vm-$vmid"                # hostname for the VM

@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# default parameters                   - can be over-ridden by command line args
+# default parameters                   - can be over-ridden by command line args, or environment variables with uppercase names (e.g., PVENODE, GATEWAY, etc.)
 # definitely modify for environment
-node=iluvatar                          # pve node or 'local' if you are running it on the Proxmox node
-gateway=192.168.86.1                   # default gateway for VMs
-storage_pool=nvme_pool                 # default storage pool for VM disks
-sshkeys=/root/.ssh/authorized_keys     # or a text file with public keys, one per line, OPENSSH format _ON the NODE_!!!
-image_path=ssd_backup:import           # PVESM path to cloud images on the node, e.g., local:import
-physical_path=/mnt/ssd_backup/import   # physical path on the node where images are stored
+pve_node=${PVENODE:-"local"}                                            # pve node or 'local' if you are running it on the Proxmox node
+gateway=${GATEWAY:-"192.168.86.1"}                                      # default gateway for VMs
+storage_pool=${STORAGE_POOL:-"nvme_pool"}                               # default storage pool for VM disks
+sshkeys=${SSHKEYS:-"/root/.ssh/authorized_keys"}                        # or a text file with public keys, one per line, OPENSSH format _ON the NODE_!!!
+logical_import_path=${LOGICAL_IMPORT_PATH:-"ssd_backup:import"}         # PVESM path to cloud images on the node, e.g., local:import
+physical_import_path=${PHYSICAL_IMPORT_PATH:-"/mnt/ssd_backup/import"}  # physical path on the node where images are stored
 
 # minimum required parameters to create VM
 vmid=""                            # VMID to create, must be unique
-image=""                           # cloud image filename (must exist in ${image_path} on the node)
+image=""                           # cloud image filename (must exist in ${logical_import_path} on the node)
 # required parameters to run a VM with reasonable defaults
 hostname=""                        # hostname for the VM; default: vm-<vmid>
 user=""                            # cloud-init user; auto-detected if omitted
@@ -33,23 +33,22 @@ dry_run=0
 help=0
 
 list_images() {
-    echo "Available images on node $node in path $physical_path:"
-    if [[ $node == "local" ]]; then
-        cd "$physical_path" && ls -1 *.qcow2
+    echo "Available images on node $pve_node in path $physical_import_path:"
+    if [[ $pve_node == "local" ]]; then
+        cd "$physical_import_path" && ls -1 *.qcow2
     else
-        ssh "$node" "cd $physical_path && ls -1 *.qcow2"
+        ssh "$pve_node" "cd $physical_import_path && ls -1 *.qcow2"
     fi
     exit 1
 }
 
-while getopts "Ln:w:s:k:I:v:h:i:u:c:m:d:a:p:t:e:r:g:T:D:P:W:NRH" opt; do
+while getopts "Ln:w:s:k:v:h:i:u:c:m:d:a:p:t:e:r:g:T:D:P:W:NRH" opt; do
   case $opt in 
     L) list_images ;;
-    n) node="$OPTARG" ;;
+    n) pve_node="$OPTARG" ;;
     w) gateway="$OPTARG" ;;
     s) storage_pool="$OPTARG" ;;
     k) sshkeys="$OPTARG" ;;
-    I) image_path="$OPTARG" ;;
     v) vmid="$OPTARG" ;;
     h) hostname="$OPTARG" ;;
     i) image="$OPTARG" ;;
@@ -82,7 +81,7 @@ SYNOPSIS
 
 REQUIRED OPTIONS
     -v <vmid>            VMID to create (must be unique)
-    -i <image>           Cloud image filename (must exist in ${image_path} on the node)
+    -i <image>           Cloud image filename (must exist in ${logical_import_path} on the node)
 
 COMMON OPTIONS
     -h <hostname>        Hostname for the VM (default: vm-<vmid>)
@@ -93,7 +92,7 @@ COMMON OPTIONS
     -c <cores>           Number of vCPUs (default: $cores)
     -m <memory>          Memory in MB (default: $memory)
     -d <size>            Boot disk size in GB (default: $disk_size)
-    -n <node>            Proxmox node or 'local' (default: $node)
+    -n <node>            Proxmox node or 'local' (default: $pve_node)
     -w <gateway>         Gateway IP address (default: $gateway)
     -s <storage>         Storage pool for disks (default: $storage_pool)
     
@@ -130,38 +129,38 @@ EOF
     exit 1
 fi
 
-if [[ $node == "local" ]]; then
+if [[ $pve_node == "local" ]]; then
     if qm status "$vmid" &>/dev/null; then
         echo "VMID $vmid already exists on local node"
         exit 1
     fi
 else
-    if ssh "$node" qm status "$vmid" &>/dev/null; then
-        echo "VMID $vmid already exists on $node"
+    if ssh "$pve_node" qm status "$vmid" &>/dev/null; then
+        echo "VMID $vmid already exists on $pve_node"
         exit 1
     fi
 fi
 
-if [[ $node == "local" ]]; then
-    if ! test -f "$physical_path/$image"; then
+if [[ $pve_node == "local" ]]; then
+    if ! test -f "$physical_import_path/$image"; then
         echo "Image $image not found on local node"
         list_images
     fi
 else
-    if ! ssh "$node" test -f "$physical_path/$image"; then
-        echo "Image '$image' not found on node $node"
+    if ! ssh "$pve_node" test -f "$physical_import_path/$image"; then
+        echo "Image '$image' not found on node $pve_node"
         list_images
     fi
 fi
 
-if [[ $node == "local" ]]; then
+if [[ $pve_node == "local" ]]; then
     if ! test -f "$sshkeys"; then
         echo "SSH keys file $sshkeys not found on local node"
         exit 1
     fi
 else
-    if ! ssh "$node" test -f "$sshkeys"; then
-        echo "SSH keys file $sshkeys not found on node $node"
+    if ! ssh "$pve_node" test -f "$sshkeys"; then
+        echo "SSH keys file $sshkeys not found on node $pve_node"
         exit 1
     fi
 fi
@@ -182,13 +181,13 @@ run_qm() {
         return 0
     fi
 
-    if [[ $node == "local" ]]; then
+    if [[ $pve_node == "local" ]]; then
         qm "${args[@]}"
     else
         # Escape everything so SSH passes it as a single, safe command
         local cmd
         cmd=$(escape_for_ssh qm "${args[@]}")
-        ssh "$node" "$cmd"
+        ssh "$pve_node" "$cmd"
     fi
 }
 
@@ -197,8 +196,8 @@ if [[ -z $user ]]; then
   case "$image" in
     *ubuntu*|*noble*|*questing*) user="ubuntu" ;;
     *debian*|*bookworm*|*trixie*) user="debian" ;;
-    *Rocky*|*rocky*|*almalinux*|*CentOS*|*centos*|*rhel*) user="cloud-user" && cputype="host" ;;  # Force host CPU type for Rocky, CentOS, and Amazon Linux due to boot issues with other CPU types.
-    *amzn2*|*al2023*) user="ecs-user" && cputype="host" ;;  # Force host CPU type for Rocky, CentOS, and Amazon Linux due to boot issues with other CPU types.
+    *Rocky*|*rocky*|*almalinux*|*CentOS*|*centos*|*rhel*) user="cloud-user" && cputype="host" ;;  # Force CPU type=host for Rocky, CentOS, and Amazon Linux due to boot issues with other CPU types.
+    *amzn2*|*al2023*) user="ecs-user" && cputype="host" ;;  # Force CPU type=host for Rocky, CentOS, and Amazon Linux due to boot issues with other CPU types.
     *fedora*) user="fedora" ;;
     *arch*) user="arch" ;;
     *) user="ubuntu" ;;  # safe default
@@ -209,17 +208,17 @@ qm_options=(
   --cores "$cores"                  # number of vCPUs
   --memory "$memory"                # RAM in MB
   --balloon "$memory"               # balloon memory in MB
-  --net0 "virtio,bridge=vmbr0"      # default network interface
-  --scsihw virtio-scsi-single       # high-performance SCSI controller
-  --boot order=scsi0                # boot from scsi0
-  --scsi0 "$storage_pool:0,import-from=$image_path/$image"  # boot disk imported from cloud QCOW2 image
-  --ostype l26                      # Linux 2.6/3.x/4.x/5.x/6.x
+  --net0 "virtio,bridge=vmbr0"      # default network interface (opinionated)
+  --scsihw virtio-scsi-single       # high-performance SCSI controller (opinionated)
+  --boot order=scsi0                # boot from scsi0 (opinionated)
+  --scsi0 "$storage_pool:0,import-from=$logical_import_path/$image"  # boot disk imported from cloud QCOW2 image
+  --ostype l26                      # Linux 2.6/3.x/4.x/5.x/6.x (opinionated)
   --ide2 "$storage_pool:cloudinit"  # cloud-init drive
-  --citype nocloud                  # Proxmox VE 9.1.2 documentation recommends 'nocloud' for linux cloud-init compatibility
+  --citype nocloud                  # Proxmox VE 9.1.2 documentation recommends 'nocloud' for linux cloud-init compatibility (opinionated)
   --ciupgrade "$upgrade"            # cloud-init OS upgrades on first boot (1 or 0)
   --ciuser "$user"                  # cloud-init user
   --sshkeys "$sshkeys"              # Inject SSH keys into cloud-init user (opinionated - no passwords!)
-  --serial0 socket                  # Enable serial console access; often required for cloud-init images to boot reliably.
+  --serial0 socket                  # Enable serial console access; often required for cloud-init images to boot reliably. (opinionated)
   --agent 1                         # Enable QEMU Guest Agent (opinionated)
   --onboot 1                        # Start VM on host boot (opinionated)
 )
@@ -247,7 +246,7 @@ fi
 
 [[ -z $hostname ]] && hostname="vm-$vmid"  # default hostname if not set explicitly
 
-echo "🛡️ Building VMID $vmid ($hostname) on node $node"
+echo "🛡️ Building VMID $vmid ($hostname) on node $pve_node"
 
 run_qm create "$vmid" --name "$hostname" "${qm_options[@]}"  # create the VM
 run_qm disk resize "$vmid" scsi0 $disk_size"G"               # resize the boot disk
@@ -255,11 +254,11 @@ run_qm start "$vmid"                                         # start the VM
 
 
 if [[ $? -ne 0 ]]; then
-    echo "❌ Creation failed for VMID $vmid ($hostname)"
+    echo "❌ Creation failed for VMID $vmid ($hostname) on node $pve_node"
     exit 1
 fi
 
-echo "✅ Creation succeeded for VMID $vmid ($hostname)"
+echo "✅ Creation succeeded for VMID $vmid ($hostname) on node $pve_node"
 # Examples:
 # ./build_vm.sh -v 400 -h frodo -i ubuntu-24.04-cloudimg-amd64.qcow2
 # ./build_vm.sh -v 400 -h frodo -i ubuntu-24.04-cloudimg-amd64.qcow2 -a 192.168.86.90
