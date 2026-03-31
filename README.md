@@ -19,11 +19,13 @@
   - **[Terraform](https://github.com/dekeyrej/Terraform)** — Modules for provisioning VMs and LXC containers. The VM module supports Ubuntu (22.04, 24.04, 25.10), Debian (12, 13, 14), RockyLinux (9, 10), CentOS (9, 10), and Amazon Linux (2, 2023).  
     Due to proxmox implementation details, the LXC module works best with *lightly customized* images (see below) derived from [linuxcontainers.org](https://images.linuxcontainers.org/).
 
-  - **[custom-container-images](https://github.com/dekeyrej/custom-container-images)** — Source and build instructions for custom LXC images (Ubuntu, Debian, RockyLinux, CentOS, AmazonLinux 2023). These images enable `openssh-server`, create a default non‑root user, grant passwordless sudo, and prepopulate `authorized_keys`, making them immediately Ansible‑ready.
+  - **[custom-container-images](https://github.com/dekeyrej/custom-container-images)** — Source and build instructions for custom LXC images (Ubuntu, Debian, RockyLinux, ~~CentOS~~, AmazonLinux 2023). These images enable `openssh-server`, create a default non‑root user, grant passwordless sudo, and prepopulate `authorized_keys`, making them immediately Ansible‑ready.
 
   - **[ansible](https://github.com/dekeyrej/ansible)** — Dozens of parameterized roles and playbooks for configuring VMs and containers.
 
   - **[ansible-vault-keys](https://github.com/dekeyrej/ansible-vault-keys)** — A companion utility to `ansible-vault` that keeps sensitive variables secure *and* YAML maintainable.
+
+    - **[Proxmox](https://github.com/dekeyrej/proxmox)** — A pair of command line utilities (`build_vm.sh` and `build_container.sh`) providing opinionated defaults to Proxmox's `qm` and `pct` respectively to facilitate rapid creation of VMs and LXC Containers.
 
 ---
 
