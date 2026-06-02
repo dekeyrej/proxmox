@@ -31,6 +31,7 @@ hostpci0=""                        # PCI passthrough mapping; e.g., mapping=pro6
 upgrade=1                          # Enable cloud-init OS upgrade on first boot (1 or 0)
 dry_run=0
 help=0
+start_after_creation=1
 
 list_images() {
     echo "Available images on node $pve_node in path $physical_import_path:"
@@ -42,7 +43,7 @@ list_images() {
     exit 1
 }
 
-while getopts "Ln:w:s:k:v:h:i:u:c:m:d:a:p:t:e:r:g:T:D:P:W:NRH" opt; do
+while getopts "Ln:w:s:k:v:h:i:u:c:m:d:a:p:t:e:r:g:T:D:P:W:NRHS" opt; do
   case $opt in 
     L) list_images ;;
     n) pve_node="$OPTARG" ;;
@@ -68,6 +69,7 @@ while getopts "Ln:w:s:k:v:h:i:u:c:m:d:a:p:t:e:r:g:T:D:P:W:NRH" opt; do
     N) upgrade=0 ;;
     R) dry_run=1 ;;
     H) help=1 ;;
+    S) start_after_creation=0 ;;
   esac
 done
 
@@ -111,6 +113,7 @@ FLAGS
     -R                   Dry run (print actions only)
     -H                   Show this help and exit
     -L                   List available images on the node
+    -S                   no Start after creation (default is to start the VM)
 
 DESCRIPTION
     build_vm.sh wraps the Proxmox 'qm' command to provide a clean,
@@ -238,10 +241,10 @@ qm_options=(
 [[ -n $passwd ]] && qm_options+=(--cipassword "$passwd")
 
 # hostpci Requires q35 machine type, UEFI BIOS, and pcie=1 for stable GPU performance
-[[ -n $hostpci0 ]] && qm_options+=(--hostpci0 "$hostpci0" --machine "type=q35" --bios ovmf --efidisk0 "$storage_pool:1,efitype=4m,ms-cert=2023,pre-enrolled-keys=1") # (opinionated for hostpci0)
+[[ -n $hostpci0 ]] && qm_options+=(--hostpci0 "$hostpci0" --machine "type=q35,viommu=virtio" --bios ovmf --efidisk0 "$storage_pool:1,efitype=4m,ms-cert=2023k,pre-enrolled-keys=1") # (opinionated for hostpci0)
 
 if [[ "$machine_type" == "q35" ]]; then
-  qm_options+=(--machine "type=q35" --bios ovmf --efidisk0 "$storage_pool:1,efitype=4m,ms-cert=2023,pre-enrolled-keys=1") # (opinionated for q35)
+  qm_options+=(--machine "type=q35,viommu=virtio" --bios ovmf --efidisk0 "$storage_pool:1,efitype=4m,ms-cert=2023k,pre-enrolled-keys=1") # (opinionated for q35)
 fi
 
 [[ -z $hostname ]] && hostname="vm-$vmid"  # default hostname if not set explicitly
@@ -250,8 +253,10 @@ echo "🛡️ Building VMID $vmid ($hostname) on node $pve_node"
 
 run_qm create "$vmid" --name "$hostname" "${qm_options[@]}"  # create the VM
 run_qm disk resize "$vmid" scsi0 $disk_size"G"               # resize the boot disk
-run_qm start "$vmid"                                         # start the VM
 
+if [[ $start_after_creation -eq 1 ]]; then
+  run_qm start "$vmid"                                         # start the VM
+fi
 
 if [[ $? -ne 0 ]]; then
     echo "❌ Creation failed for VMID $vmid ($hostname) on node $pve_node"
