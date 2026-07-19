@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+set -euo pipefail
+IFS=$'\n\t'
+trap 'echo "❌ $0 failed on line ${LINENO:-?}" >&2' ERR
 # default parameters                   - can be over-ridden by command line args, or environment variables with uppercase names (e.g., PVENODE, GATEWAY, etc.)
 # definitely modify for environment
 pve_node=${PVENODE:-"local"}                                            # pve node or 'local' if you are running it on the Proxmox node
@@ -12,7 +15,7 @@ physical_import_path=${PHYSICAL_IMPORT_PATH:-"/mnt/ssd_backup/import"}  # physic
 vmid=""                            # VMID to create, must be unique
 image=""                           # cloud image filename (must exist in ${logical_import_path} on the node)
 # required parameters to run a VM with reasonable defaults
-hostname=""                        # hostname for the VM; default: vm-<vmid>
+hostname="vm-$vmid"                # hostname for the VM
 user=""                            # cloud-init user; auto-detected if omitted
 passwd=""                          # cloud-init user password (not recommended; use SSH keys instead)
 cores=2                            # number of vCPUs
@@ -239,15 +242,15 @@ qm_options=(
 [[ -n $tags ]] && qm_options+=(--tags "$tags")
 [[ -n $display ]] && qm_options+=(--vga "$display")
 [[ -n $passwd ]] && qm_options+=(--cipassword "$passwd")
+[[ -n $hostpci0 ]] && qm_options+=(--hostpci0 "$hostpci0")
+# [[ -n $hostpci0 ]] && qm_options+=(--hostpci0 "$hostpci0" --machine "type=q35,viommu=virtio" --bios ovmf --efidisk0 "$storage_pool:1,efitype=4m,ms-cert=2023k,pre-enrolled-keys=1") # (opinionated for hostpci0)
 
 # hostpci Requires q35 machine type, UEFI BIOS, and pcie=1 for stable GPU performance
-[[ -n $hostpci0 ]] && qm_options+=(--hostpci0 "$hostpci0" --machine "type=q35,viommu=virtio" --bios ovmf --efidisk0 "$storage_pool:1,efitype=4m,ms-cert=2023k,pre-enrolled-keys=1") # (opinionated for hostpci0)
-
-if [[ "$machine_type" == "q35" ]]; then
+if [[ "$machine_type" == "q35" || -n $hostpci0 ]]; then
   qm_options+=(--machine "type=q35,viommu=virtio" --bios ovmf --efidisk0 "$storage_pool:1,efitype=4m,ms-cert=2023k,pre-enrolled-keys=1") # (opinionated for q35)
 fi
 
-[[ -z $hostname ]] && hostname="vm-$vmid"  # default hostname if not set explicitly
+# [[ -z $hostname ]] && hostname="vm-$vmid"  # default hostname if not set explicitly
 
 echo "🛡️ Building VMID $vmid ($hostname) on node $pve_node"
 

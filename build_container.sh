@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+set -euo pipefail
+IFS=$'\n\t'
+trap 'echo "❌ $0 failed on line ${LINENO:-?}" >&2' ERR
 # default parameters               - can be over-ridden by command line args, or environment variables with uppercase names (e.g., PVENODE, GATEWAY, etc.)
 # definitely modify for environment
 node=${PVENODE:-"local"}                                               # pve node or 'local' if you are running it on the Proxmox node
@@ -9,7 +12,7 @@ image_path=${LOGICAL_IMAGE_PATH:-"ssd_backup:vztmpl"}                  # PVESM p
 physical_path=${PHYSICAL_IMAGE_PATH:-"/mnt/ssd_backup/template/cache"} # physical path on the node where images are stored
 # required parameters to create VM
 vmid=""                            # VMID to create, must be unique
-hostname="vm-$vmid"                # hostname for the VM
+hostname="ct-$vmid"                # hostname for the VM
 image=""                           # cloud image filename (must exist in ${image_path} on the node)
 user=""                            # cloud-init user; auto-detected if omitted
 # required parameters to run a VM with reasonable defaults
@@ -30,6 +33,7 @@ arch="amd64"                       # e.g., amd64, arm64
 # flags
 dry_run=0
 help=0
+start_after_creation=1
 
 list_images() {
     echo "Available images on node $node in path $physical_path:"
@@ -41,7 +45,7 @@ list_images() {
     exit 1
 }
 
-while getopts "Ln:w:s:k:I:v:h:i:u:c:m:d:a:p:r:g:RH" opt; do
+while getopts "Ln:w:s:k:I:v:h:i:u:c:m:d:a:p:r:g:RHS" opt; do
   case $opt in 
     L) list_images ;;
     n) node="$OPTARG" ;;
@@ -62,6 +66,7 @@ while getopts "Ln:w:s:k:I:v:h:i:u:c:m:d:a:p:r:g:RH" opt; do
     g) tags="$OPTARG" ;;
     R) dry_run=1 ;;
     H) help=1 ;;
+    S) start_after_creation=0 ;;
   esac
 done
 
@@ -95,6 +100,7 @@ ADVANCED OPTIONS
     -g <tags>            Comma-separated VM tags
 
 FLAGS
+    -S                   Do not start the VM after creation
     -R                   Dry run (print actions only)
     -H                   Show this help and exit
     -L                   List available images on the node
@@ -190,7 +196,7 @@ pct_options=(
   --swap 0
   --ssh-public-keys "$sshkeys"
   --onboot 1
-  --start 1
+  --start "$start_after_creation"
   --unprivileged 1
   --features nesting=1
 )
